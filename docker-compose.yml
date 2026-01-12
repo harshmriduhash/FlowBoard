@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+
+  backend:
+    build: ./backend
+    environment:
+      - PORT=4000
+      - MONGO_URI=mongodb://mongo:27017/flowboard
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=change-me
+      - JWT_REFRESH_SECRET=change-me-too
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - '4000:4000'
+
+  frontend:
+    build: ./frontend
+    environment:
+      - VITE_API_URL=http://localhost:4000
+    depends_on:
+      - backend
+    ports:
+      - '4173:4173'
+
+volumes:
+  mongo_data:
