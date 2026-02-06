@@ -23,6 +23,8 @@ export default function WorkflowDetailPage() {
   const queryClient = useQueryClient();
   const [dataTitle, setDataTitle] = useState('');
   const [dataDescription, setDataDescription] = useState('');
+  const [priority, setPriority] = useState('medium');
+  const [isPrioritizing, setIsPrioritizing] = useState(false);
 
   const workflowQuery = useQuery({
     queryKey: ['workflow', id],
@@ -46,6 +48,7 @@ export default function WorkflowDetailPage() {
     mutationFn: async () => {
       const payload = {
         workflowId: id,
+        priority, 
         data: { title: dataTitle, description: dataDescription },
       };
       const { data } = await api.post('/items', payload);
@@ -55,8 +58,23 @@ export default function WorkflowDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['items', id] });
       setDataTitle('');
       setDataDescription('');
+      setPriority('medium');
     },
   });
+
+  const handlePrioritize = async () => {
+    if (!dataTitle) return alert("Title is required for analysis");
+    setIsPrioritizing(true);
+    try {
+        const { data } = await api.post('/ai/prioritize-task', { title: dataTitle, description: dataDescription });
+        if (data.priority) setPriority(data.priority);
+    } catch (e) {
+        console.error(e);
+        alert("AI Prioritization failed");
+    } finally {
+        setIsPrioritizing(false);
+    }
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
@@ -90,9 +108,15 @@ export default function WorkflowDetailPage() {
                 to={`/app/items/${item._id}`}
                 className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 hover:border-cyan-400/40"
               >
-                <p className="text-sm font-semibold text-cyan-200">{item.data?.title || 'Item'}</p>
-                <p className="text-xs text-slate-300">{item.data?.description || 'No description'}</p>
-                <p className="mt-1 text-xs text-slate-400">State: {item.currentState}</p>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-sm font-semibold text-cyan-200">{item.data?.title || 'Item'}</p>
+                        <p className="text-xs text-slate-300">{item.data?.description || 'No description'}</p>
+                    </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                     <span>State: {item.currentState}</span>
+                </div>
               </Link>
             ))}
           </div>
@@ -100,7 +124,17 @@ export default function WorkflowDetailPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-        <p className="text-sm font-semibold text-slate-100">Create Item</p>
+        <div className="flex justify-between items-center">
+            <p className="text-sm font-semibold text-slate-100">Create Item</p>
+            <button
+                type="button"
+                onClick={handlePrioritize}
+                disabled={isPrioritizing || !dataTitle}
+                className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+            >
+                {isPrioritizing ? 'Analyzing...' : '✨ AI Priority'}
+            </button>
+        </div>
         <form className="mt-4 space-y-3" onSubmit={(e) => { e.preventDefault(); createItem.mutate(); }}>
           <div>
             <label className="text-xs text-slate-300">Title</label>
@@ -119,6 +153,18 @@ export default function WorkflowDetailPage() {
               value={dataDescription}
               onChange={(e) => setDataDescription(e.target.value)}
             />
+          </div>
+          <div>
+            <label className="text-xs text-slate-300">Priority</label>
+            <select
+                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-400"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+            >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
           </div>
           <button
             type="submit"

@@ -9,6 +9,7 @@ import WorkflowDetailPage from './pages/WorkflowDetail';
 import ItemDetailPage from './pages/ItemDetail';
 import AuthPage from './pages/AuthPage';
 import PricingPage from './pages/Pricing';
+import ChatWidget from './components/ChatWidget';
 
 function App() {
   const [auth, setAuth] = useState<AuthState>(() => loadAuth());
@@ -105,6 +106,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      {isAuthed && <ChatWidget />}
     </div>
   );
 }

@@ -7,6 +7,7 @@ const itemSchema = new mongoose.Schema(
     data: { type: Object, default: {} },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+    dueDate: { type: Date },
     workspaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', required: true },
   },
   { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }

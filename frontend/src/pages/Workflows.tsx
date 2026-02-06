@@ -38,6 +38,29 @@ export default function WorkflowsPage() {
     },
   });
 
+  const [isSuggesting, setIsSuggesting] = useState(false);
+
+  const handleSuggest = async () => {
+      if (!description) return alert("Please fill in the description first.");
+      setIsSuggesting(true);
+      try {
+          const { data } = await api.post('/ai/suggest-workflow', { description });
+          if (data.name) setName(data.name);
+          if (data.states) setStates(data.states.join(', '));
+          if (data.allowedTransitions) {
+              const str = Object.entries(data.allowedTransitions).flatMap(([from, toes]) =>
+                  (toes as string[]).map(to => `${from}:${to}`)
+              ).join(';');
+              setTransitions(str);
+          }
+      } catch (e) {
+          console.error(e);
+          alert("AI Suggestion failed.");
+      } finally {
+          setIsSuggesting(false);
+      }
+  };
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     const statesArr = states.split(',').map((s) => s.trim()).filter(Boolean);
@@ -82,7 +105,17 @@ export default function WorkflowsPage() {
         </div>
       </div>
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-        <p className="text-sm font-semibold text-slate-100">Create Workflow</p>
+        <div className="flex justify-between items-center">
+            <p className="text-sm font-semibold text-slate-100">Create Workflow</p>
+            <button
+                type="button"
+                onClick={handleSuggest}
+                disabled={isSuggesting || !description}
+                className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+            >
+                {isSuggesting ? 'Thinking...' : '✨ AI Suggest'}
+            </button>
+        </div>
         <form className="mt-4 space-y-3" onSubmit={handleCreate}>
           <div>
             <label className="text-xs text-slate-300">Name</label>
@@ -100,6 +133,7 @@ export default function WorkflowsPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
+              placeholder="Describe your workflow..."
             />
           </div>
           <div>

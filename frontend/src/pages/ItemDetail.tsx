@@ -27,7 +27,8 @@ type EventLog = {
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const [nextState, setNextState] = useState('');
+    const [nextState, setNextState] = useState('');
+  const [aiSubtasks, setAiSubtasks] = useState<any[]>([]);
 
   const itemQuery = useQuery({
     queryKey: ['item', id],
@@ -67,6 +68,30 @@ export default function ItemDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['logs', id] });
       setNextState('');
     },
+  });
+
+  const planMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/ai/planner/breakdown', { itemId: id });
+      return data.subtasks;
+    },
+    onSuccess: (data) => {
+      setAiSubtasks(data);
+    },
+  });
+
+  const createSubtaskMutation = useMutation({
+    mutationFn: async (task: any) => {
+      await api.post('/items', {
+        workflowId: itemQuery.data?.workflowId,
+        data: { title: task.title, description: task.description },
+        priority: task.priority
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [] }); // Ideally invalidate items list on dashboard, but here fine
+      // Remove the added task from list?
+    }
   });
 
   const allowedNext =
@@ -139,6 +164,55 @@ export default function ItemDetailPage() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <p className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+            <span className="text-purple-400">✨</span> AI Planner
+          </p>
+          <p className="text-xs text-slate-400 mt-1">Break this task down into smaller actionable items.</p>
+          
+          <div className="mt-4">
+             {aiSubtasks.length === 0 ? (
+               <button
+                 onClick={() => planMutation.mutate()}
+                 disabled={planMutation.isPending}
+                 className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+               >
+                 {planMutation.isPending ? 'Analyzing Task...' : 'Break Down with AI'}
+               </button>
+             ) : (
+               <div className="space-y-3">
+                 {aiSubtasks.map((task, idx) => (
+                   <div key={idx} className="flex items-center justify-between rounded border border-slate-700 bg-slate-800 p-3">
+                     <div>
+                       <p className="font-medium text-slate-200">{task.title}</p>
+                       <p className="text-xs text-slate-400">{task.description}</p>
+                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${task.priority === 'high' ? 'bg-red-900 text-red-100' : 'bg-slate-700 text-slate-300'}`}>
+                         {task.priority}
+                       </span>
+                     </div>
+                     <button
+                       onClick={() => {
+                         createSubtaskMutation.mutate(task);
+                         setAiSubtasks(prev => prev.filter((_, i) => i !== idx));
+                       }}
+                       disabled={createSubtaskMutation.isPending}
+                       className="text-xs bg-cyan-900 text-cyan-200 px-2 py-1 rounded hover:bg-cyan-800"
+                     >
+                       Add
+                     </button>
+                   </div>
+                 ))}
+                 <button 
+                   onClick={() => setAiSubtasks([])}
+                   className="text-xs text-slate-500 hover:text-slate-300 mt-2"
+                 >
+                   Clear Suggestions
+                 </button>
+               </div>
+             )}
           </div>
         </div>
       </div>
