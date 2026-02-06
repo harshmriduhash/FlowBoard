@@ -1,7 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import api from '../lib/api';
-import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import api from "../lib/api";
+import { useState } from "react";
 
 type Workflow = {
   _id: string;
@@ -13,69 +13,81 @@ type Workflow = {
 
 export default function WorkflowsPage() {
   const queryClient = useQueryClient();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [states, setStates] = useState('Created,In Review,Approved,Completed');
-  const [transitions, setTransitions] = useState('Created:In Review;In Review:Approved;Approved:Completed');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [states, setStates] = useState("Created,In Review,Approved,Completed");
+  const [transitions, setTransitions] = useState(
+    "Created:In Review;In Review:Approved;Approved:Completed",
+  );
 
   const workflowsQuery = useQuery({
-    queryKey: ['workflows'],
+    queryKey: ["workflows"],
     queryFn: async () => {
-      const { data } = await api.get('/workflows');
+      const { data } = await api.get("/workflows");
       return data as Workflow[];
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (payload: Partial<Workflow>) => {
-      const { data } = await api.post('/workflows', payload);
+      const { data } = await api.post("/workflows", payload);
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflows'] });
-      setName('');
-      setDescription('');
+      queryClient.invalidateQueries({ queryKey: ["workflows"] });
+      setName("");
+      setDescription("");
     },
   });
 
   const [isSuggesting, setIsSuggesting] = useState(false);
 
   const handleSuggest = async () => {
-      if (!description) return alert("Please fill in the description first.");
-      setIsSuggesting(true);
-      try {
-          const { data } = await api.post('/ai/suggest-workflow', { description });
-          if (data.name) setName(data.name);
-          if (data.states) setStates(data.states.join(', '));
-          if (data.allowedTransitions) {
-              const str = Object.entries(data.allowedTransitions).flatMap(([from, toes]) =>
-                  (toes as string[]).map(to => `${from}:${to}`)
-              ).join(';');
-              setTransitions(str);
-          }
-      } catch (e) {
-          console.error(e);
-          alert("AI Suggestion failed.");
-      } finally {
-          setIsSuggesting(false);
+    if (!description) return alert("Please fill in the description first.");
+    setIsSuggesting(true);
+    try {
+      const { data } = await api.post("/ai/suggest-workflow", { description });
+      if (data.name) setName(data.name);
+      if (data.states) setStates(data.states.join(", "));
+      if (data.allowedTransitions) {
+        const str = Object.entries(data.allowedTransitions)
+          .flatMap(([from, toes]) =>
+            (toes as string[]).map((to) => `${from}:${to}`),
+          )
+          .join(";");
+        setTransitions(str);
       }
+    } catch (e) {
+      console.error(e);
+      alert("AI Suggestion failed.");
+    } finally {
+      setIsSuggesting(false);
+    }
   };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const statesArr = states.split(',').map((s) => s.trim()).filter(Boolean);
+    const statesArr = states
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     const map: Record<string, string[]> = {};
     transitions
-      .split(';')
+      .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
       .forEach((pair) => {
-        const [from, to] = pair.split(':').map((x) => x.trim());
+        const [from, to] = pair.split(":").map((x) => x.trim());
         if (from && to) {
           map[from] = map[from] ? [...map[from], to] : [to];
         }
       });
-    createMutation.mutate({ name, description, states: statesArr, allowedTransitions: map });
+    createMutation.mutate({
+      name,
+      description,
+      states: statesArr,
+      allowedTransitions: map,
+    });
   };
 
   return (
@@ -88,7 +100,9 @@ export default function WorkflowsPage() {
           </span>
         </div>
         <div className="grid gap-3">
-          {workflowsQuery.isLoading && <p className="text-sm text-slate-300">Loading...</p>}
+          {workflowsQuery.isLoading && (
+            <p className="text-sm text-slate-300">Loading...</p>
+          )}
           {workflowsQuery.data?.map((wf) => (
             <Link
               key={wf._id}
@@ -96,9 +110,11 @@ export default function WorkflowsPage() {
               className="rounded-xl border border-slate-800 bg-slate-900/70 p-4 hover:border-cyan-400/50"
             >
               <p className="text-sm font-semibold text-cyan-200">{wf.name}</p>
-              <p className="text-xs text-slate-300">{wf.description || 'No description'}</p>
+              <p className="text-xs text-slate-300">
+                {wf.description || "No description"}
+              </p>
               <p className="mt-1 text-xs text-slate-400">
-                States: {wf.states.join(' → ')}
+                States: {wf.states.join(" → ")}
               </p>
             </Link>
           ))}
@@ -106,15 +122,17 @@ export default function WorkflowsPage() {
       </div>
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
         <div className="flex justify-between items-center">
-            <p className="text-sm font-semibold text-slate-100">Create Workflow</p>
-            <button
-                type="button"
-                onClick={handleSuggest}
-                disabled={isSuggesting || !description}
-                className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
-            >
-                {isSuggesting ? 'Thinking...' : '✨ AI Suggest'}
-            </button>
+          <p className="text-sm font-semibold text-slate-100">
+            Create Workflow
+          </p>
+          <button
+            type="button"
+            onClick={handleSuggest}
+            disabled={isSuggesting || !description}
+            className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+          >
+            {isSuggesting ? "Thinking..." : "✨ AI Suggest"}
+          </button>
         </div>
         <form className="mt-4 space-y-3" onSubmit={handleCreate}>
           <div>
@@ -137,7 +155,9 @@ export default function WorkflowsPage() {
             />
           </div>
           <div>
-            <label className="text-xs text-slate-300">States (comma separated)</label>
+            <label className="text-xs text-slate-300">
+              States (comma separated)
+            </label>
             <input
               className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-400"
               value={states}
@@ -161,7 +181,7 @@ export default function WorkflowsPage() {
             className="w-full rounded-md bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-60"
             disabled={createMutation.isPending}
           >
-            {createMutation.isPending ? 'Creating...' : 'Create workflow'}
+            {createMutation.isPending ? "Creating..." : "Create workflow"}
           </button>
           {createMutation.error && (
             <p className="text-xs text-red-400">Failed to create workflow</p>
@@ -171,4 +191,3 @@ export default function WorkflowsPage() {
     </div>
   );
 }
-
